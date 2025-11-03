@@ -3,55 +3,105 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const router = useRouter();
+
+  const validatePassword = (password) => {
+    // Al menos 8 caracteres, 1 mayúscula, 1 número y 1 símbolo especial
+    const hasMinLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return hasMinLength && hasUpperCase && hasNumber && hasSpecialChar;
+  };
 
   const validate = () => {
     const errs = {};
+    
+    // Validar nombre
     if (!name.trim()) errs.name = "El nombre es obligatorio.";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) errs.email = "El correo es obligatorio.";
-    else if (!emailRegex.test(email)) errs.email = "El correo no es válido.";
-    if (!password) errs.password = "La contraseña es obligatoria.";
-    else if (password.length < 8)
-      errs.password = "La contraseña debe tener al menos 8 caracteres.";
+    
+    // Validar correo - formato usuario@correo.com
+    if (!email.trim()) {
+      errs.email = "El correo es obligatorio.";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errs.email = "Correo inválido";
+      }
+    }
+    
+    // Validar contraseña
+    if (!password) {
+      errs.password = "La contraseña es obligatoria.";
+    } else if (!validatePassword(password)) {
+      errs.password = "Contraseña insegura";
+    }
+    
+    // Validar confirmación de contraseña
+    if (!confirmPassword) {
+      errs.confirmPassword = "Debes confirmar tu contraseña.";
+    } else if (password !== confirmPassword) {
+      errs.confirmPassword = "Las contraseñas no coinciden.";
+    }
+    
     return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const v = validate();
-    setErrors(v);
-    setSubmitted(false);
-    if (Object.keys(v).length === 0) {
-      try {
-        // Usar el API route local para evitar problemas de CORS
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          // server-side validation errors
-          if (data && data.errors) setErrors(data.errors);
-          else if (data.message) setErrors({ form: data.message });
-          else setErrors({ form: "Error en el registro" });
+    setErrors({});
+    setSuccessMessage("");
+    
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        // Error del servidor
+        if (data && data.errors) {
+          setErrors(data.errors);
+        } else if (data.message) {
+          setErrors({ form: data.message });
         } else {
-          setSubmitted(true);
-          // limpiar formulario
-          setName("");
-          setEmail("");
-          setPassword("");
+          setErrors({ form: "Error en el registro" });
         }
-      } catch (err) {
-        setErrors({ form: "Error de conexión. Intente nuevamente." });
+      } else {
+        // Registro exitoso
+        setSuccessMessage("Cuenta creada");
+        // Limpiar formulario
+        setName("");
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        
+        // Redirigir al dashboard después de 1 segundo
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
       }
+    } catch (err) {
+      setErrors({ form: "Error de conexión. Intente nuevamente." });
     }
   };
 
@@ -79,11 +129,19 @@ export default function Home() {
           </p>
         </div>
 
-        {submitted ? (
-          <div className="mt-6 p-4 bg-green-50 rounded-md text-green-800">
-            Registro completado correctamente.
+        {/* Mensaje de error general */}
+        {errors.form && (
+          <div className="mt-6 p-4 bg-red-50 rounded-md text-red-800">
+            {errors.form}
           </div>
-        ) : null}
+        )}
+
+        {/* Mensaje de éxito */}
+        {successMessage && (
+          <div className="mt-6 p-4 bg-green-50 rounded-md text-green-800">
+            {successMessage}
+          </div>
+        )}
 
         <form className="mt-6" onSubmit={handleSubmit} noValidate>
           <div className="mb-4">
@@ -139,6 +197,25 @@ export default function Home() {
             {errors.password && (
               <p id="password-error" className="mt-1 text-sm text-red-600">
                 {errors.password}
+              </p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-black">Confirmar Contraseña</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none p-2 text-black ${
+                errors.confirmPassword ? "border-red-500" : ""
+              }`}
+              aria-invalid={errors.confirmPassword ? "true" : "false"}
+              aria-describedby={errors.confirmPassword ? "confirm-password-error" : undefined}
+            />
+            {errors.confirmPassword && (
+              <p id="confirm-password-error" className="mt-1 text-sm text-red-600">
+                {errors.confirmPassword}
               </p>
             )}
           </div>

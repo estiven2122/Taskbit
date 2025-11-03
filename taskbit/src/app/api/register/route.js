@@ -44,9 +44,9 @@ export async function POST(req) {
       
       if (!backendResponse.ok) {
         if (data && data.message) {
-          if (data.message.includes("email ya está registrado")) {
+          if (data.message.includes("email ya está registrado") || data.message.includes("email está registrado")) {
             return NextResponse.json(
-              { errors: { email: "El correo ya está registrado." } },
+              { errors: { form: "Este correo ya está registrado" } },
               { status: 400 }
             );
           }
@@ -67,7 +67,7 @@ export async function POST(req) {
         );
         if (exists) {
           return NextResponse.json(
-            { errors: { email: "El correo ya está registrado." } },
+            { errors: { form: "Este correo ya está registrado" } },
             { status: 400 }
           );
         }
