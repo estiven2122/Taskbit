@@ -1,8 +1,10 @@
 package auth.controller;
 
 import auth.dto.AuthResponse;
+import auth.dto.ForgotPasswordRequest;
 import auth.dto.LoginRequest;
 import auth.dto.RegisterRequest;
+import auth.dto.ResetPasswordRequest;
 import auth.service.UserService;
 import com.taskbit.backend.security.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,5 +48,31 @@ public class AuthController {
         .userId(user.getId())
         .token(token)
         .build());
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Solicitar restablecimiento de contraseña", description = "Envía un enlace para restablecer la contraseña al correo del usuario")
+    public ResponseEntity<AuthResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        String token = userService.initiatePasswordReset(request.getEmail());
+        
+        // En producción, aquí se enviaría el email con el token
+        // En desarrollo, retornamos el token en la respuesta
+        AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
+                .message("Hemos enviado un enlace para restablecer tu contraseña");
+        
+        // Solo incluir token en desarrollo (puedes agregar una propiedad de perfil para controlar esto)
+        responseBuilder.token(token);
+        
+        return ResponseEntity.ok(responseBuilder.build());
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Restablecer contraseña", description = "Restablece la contraseña usando el token de recuperación")
+    public ResponseEntity<AuthResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request.getToken(), request.getPassword());
+        
+        return ResponseEntity.ok(AuthResponse.builder()
+                .message("Contraseña actualizada con éxito")
+                .build());
     }
 }

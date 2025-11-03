@@ -38,10 +38,25 @@ export async function POST(req) {
       const data = await backendResponse.json();
       
       if (!backendResponse.ok) {
-        if (data && data.message) {
-          return NextResponse.json({ errors: { form: data.message } }, { status: 400 });
+        // Mapear mensajes del backend a los campos correctos
+        const errorMessage = data?.message || "Error al iniciar sesión";
+        
+        if (errorMessage === "Usuario no registrado") {
+          return NextResponse.json(
+            { errors: { email: "Usuario no registrado" } },
+            { status: 400 }
+          );
+        } else if (errorMessage === "Contraseña inválida") {
+          return NextResponse.json(
+            { errors: { password: "Contraseña inválida" } },
+            { status: 400 }
+          );
+        } else {
+          return NextResponse.json(
+            { errors: { form: errorMessage } },
+            { status: 400 }
+          );
         }
-        return NextResponse.json({ errors: { form: "Credenciales inválidas" } }, { status: 400 });
       }
       
       return NextResponse.json({ token: data.token, userId: data.userId });
@@ -57,7 +72,7 @@ export async function POST(req) {
         
         if (!user) {
           return NextResponse.json(
-            { errors: { form: "Credenciales inválidas" } },
+            { errors: { email: "Usuario no registrado" } },
             { status: 400 }
           );
         }
@@ -72,7 +87,7 @@ export async function POST(req) {
         
         if (!match) {
           return NextResponse.json(
-            { errors: { form: "Credenciales inválidas" } },
+            { errors: { password: "Contraseña inválida" } },
             { status: 400 }
           );
         }

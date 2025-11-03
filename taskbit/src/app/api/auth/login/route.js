@@ -16,10 +16,25 @@ export async function POST(req) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json(
-        { errors: { form: "Credenciales inválidas" } },
-        { status: 401 }
-      );
+      // Mapear mensajes del backend a los campos correctos
+      const errorMessage = data.message || "Error al iniciar sesión";
+      
+      if (errorMessage === "Usuario no registrado") {
+        return NextResponse.json(
+          { errors: { email: "Usuario no registrado" } },
+          { status: 401 }
+        );
+      } else if (errorMessage === "Contraseña inválida") {
+        return NextResponse.json(
+          { errors: { password: "Contraseña inválida" } },
+          { status: 401 }
+        );
+      } else {
+        return NextResponse.json(
+          { errors: { form: errorMessage } },
+          { status: 401 }
+        );
+      }
     }
 
     // Si la autenticación es exitosa, devolvemos los datos del usuario
