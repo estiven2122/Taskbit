@@ -125,12 +125,41 @@ public class TaskService {
             priority = priorityLower;
         }
 
+        // Validar estado si se proporciona
+        String status = task.getStatus(); // Mantener el estado actual por defecto
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            String statusValue = request.getStatus().trim();
+            // Normalizar: capitalizar primera letra de cada palabra
+            if (statusValue.equalsIgnoreCase("Pendiente") || 
+                statusValue.equalsIgnoreCase("En progreso") || 
+                statusValue.equalsIgnoreCase("Completada")) {
+                if (statusValue.equalsIgnoreCase("En progreso")) {
+                    status = "En progreso";
+                } else if (statusValue.equalsIgnoreCase("Completada")) {
+                    status = "Completada";
+                    // Si se marca como completada, actualizar completedAt
+                    if (task.getCompletedAt() == null) {
+                        task.setCompletedAt(OffsetDateTime.now());
+                    }
+                } else {
+                    status = "Pendiente";
+                    // Si cambia de completada a otro estado, limpiar completedAt
+                    if (task.getStatus().equals("Completada")) {
+                        task.setCompletedAt(null);
+                    }
+                }
+            } else {
+                throw new AuthenticationException("Estado no válido");
+            }
+        }
+
         // Actualizar campos
         task.setTitle(request.getTitle().trim());
         task.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
         task.setDueDate(request.getDueDate());
         task.setPriority(priority);
         task.setCourse(request.getCourse() != null ? request.getCourse().trim() : null);
+        task.setStatus(status);
         task.setUpdatedAt(OffsetDateTime.now());
 
         Task updatedTask = taskRepository.save(task);

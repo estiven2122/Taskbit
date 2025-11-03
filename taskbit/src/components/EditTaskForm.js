@@ -10,6 +10,7 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
     dueDate: "",
     priority: "",
     course: "",
+    status: "",
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +25,7 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : "", // Formato YYYY-MM-DD
         priority: task.priority || "",
         course: task.course || "",
+        status: task.status || "Pendiente",
       });
     }
   }, [task]);
@@ -95,6 +97,7 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
         dueDate: formData.dueDate || null,
         priority: formData.priority.trim() ? formData.priority.trim().toLowerCase() : null,
         course: formData.course.trim() || null,
+        status: formData.status || "Pendiente",
       };
 
       const token = AuthService.getToken();
@@ -244,19 +247,38 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="edit-course" className="block text-sm font-medium text-gray-700 mb-1">
-                Curso/Asignatura
-              </label>
-              <input
-                type="text"
-                id="edit-course"
-                name="course"
-                value={formData.course}
-                onChange={handleChange}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
-                placeholder="Ingrese el curso o asignatura (opcional)"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="edit-status" className="block text-sm font-medium text-gray-700 mb-1">
+                  Estado
+                </label>
+                <select
+                  id="edit-status"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
+                >
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En progreso">En progreso</option>
+                  <option value="Completada">Completada</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="edit-course" className="block text-sm font-medium text-gray-700 mb-1">
+                  Curso/Asignatura
+                </label>
+                <input
+                  type="text"
+                  id="edit-course"
+                  name="course"
+                  value={formData.course}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
+                  placeholder="Ingrese el curso o asignatura (opcional)"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
