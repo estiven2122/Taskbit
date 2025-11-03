@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AuthService from "@/services/auth.service";
 
 export default function CreateTaskForm({ onTaskCreated }) {
   const [formData, setFormData] = useState({
@@ -83,10 +84,12 @@ export default function CreateTaskForm({ onTaskCreated }) {
         course: formData.course.trim() || null,
       };
 
+      const token = AuthService.getToken();
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(taskData),
       });

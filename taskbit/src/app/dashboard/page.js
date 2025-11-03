@@ -27,9 +27,11 @@ export default function DashboardPage() {
 
   const loadTasks = async () => {
     try {
+      const token = AuthService.getToken();
       const response = await fetch("/api/tasks", {
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
       });
 
@@ -89,7 +91,12 @@ export default function DashboardPage() {
   const handleTaskClick = async (task) => {
     // Cargar los datos completos de la tarea antes de abrir el editor
     try {
-      const response = await fetch(`/api/tasks/${task.id}`);
+      const token = AuthService.getToken();
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const taskData = await response.json();
         setSelectedTask(taskData);

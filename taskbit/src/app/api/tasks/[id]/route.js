@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import AuthService from "@/services/auth.service";
 
 export async function GET(req, { params }) {
   try {
-    const token = AuthService.getToken();
+    // Obtener el token del header Authorization
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
     
     if (!token) {
       return NextResponse.json(
@@ -42,7 +43,9 @@ export async function GET(req, { params }) {
 
 export async function PUT(req, { params }) {
   try {
-    const token = AuthService.getToken();
+    // Obtener el token del header Authorization
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
     
     if (!token) {
       return NextResponse.json(

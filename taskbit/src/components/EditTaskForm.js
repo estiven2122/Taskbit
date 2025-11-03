@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import AuthService from "@/services/auth.service";
 
 export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
   const [formData, setFormData] = useState({
@@ -96,10 +97,12 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
         course: formData.course.trim() || null,
       };
 
+      const token = AuthService.getToken();
       const response = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(taskData),
       });
