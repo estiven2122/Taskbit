@@ -1,5 +1,6 @@
 package auth.service;
 
+import com.taskbit.backend.email.EmailService;
 import com.taskbit.backend.exception.AuthenticationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +22,7 @@ public class UserService {
     private final AppUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
     
     // Duración del token de reset (24 horas)
     private static final int TOKEN_EXPIRATION_HOURS = 24;
@@ -87,8 +89,9 @@ public class UserService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        // En producción, aquí se enviaría un email con el enlace
-        // Por ahora, retornamos el token para pruebas
+        // Enviar email con el enlace de recuperación
+        emailService.sendPasswordResetEmail(user.getEmail(), tokenValue);
+        
         return tokenValue;
     }
 

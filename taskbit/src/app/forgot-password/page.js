@@ -52,18 +52,7 @@ export default function ForgotPasswordPage() {
         }
       } else {
         // Mostrar mensaje de éxito
-        let message = "Hemos enviado un enlace para restablecer tu contraseña";
-        
-        // En desarrollo, mostrar el enlace si viene el token
-        if (data.token && typeof window !== 'undefined') {
-          const resetLink = `${window.location.origin}/reset-password?token=${data.token}`;
-          message += `\n\nEnlace de restablecimiento (solo para desarrollo):\n${resetLink}`;
-          // También mostrar en consola para fácil acceso
-          console.log("Token de reset:", data.token);
-          console.log("Enlace completo:", resetLink);
-        }
-        
-        setSuccessMessage(message);
+        setSuccessMessage(data.message || "Hemos enviado un enlace para restablecer tu contraseña a tu correo electrónico. Por favor, revisa tu bandeja de entrada.");
         setEmail("");
       }
     } catch (err) {
@@ -118,24 +107,8 @@ export default function ForgotPasswordPage() {
           )}
 
           {successMessage && (
-            <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm whitespace-pre-line">
-              {successMessage.split('\n').map((line, index) => {
-                if (line.startsWith('http')) {
-                  return (
-                    <div key={index} className="mt-2">
-                      <a 
-                        href={line.trim()} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 underline hover:text-indigo-800"
-                      >
-                        {line.trim()}
-                      </a>
-                    </div>
-                  );
-                }
-                return <div key={index}>{line}</div>;
-              })}
+            <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
+              {successMessage}
             </div>
           )}
 

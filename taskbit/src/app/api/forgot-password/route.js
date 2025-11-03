@@ -48,10 +48,9 @@ export async function POST(req) {
       }
     }
 
-    // Éxito - incluir token en la respuesta para desarrollo
+    // Éxito - el email ha sido enviado
     return NextResponse.json({ 
-      message: data.message,
-      token: data.token // Token para desarrollo
+      message: data.message
     });
   } catch (error) {
     console.error("Error en forgot-password:", error);

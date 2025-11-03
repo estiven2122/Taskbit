@@ -53,17 +53,11 @@ public class AuthController {
     @PostMapping("/forgot-password")
     @Operation(summary = "Solicitar restablecimiento de contraseña", description = "Envía un enlace para restablecer la contraseña al correo del usuario")
     public ResponseEntity<AuthResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        String token = userService.initiatePasswordReset(request.getEmail());
+        userService.initiatePasswordReset(request.getEmail());
         
-        // En producción, aquí se enviaría el email con el token
-        // En desarrollo, retornamos el token en la respuesta
-        AuthResponse.AuthResponseBuilder responseBuilder = AuthResponse.builder()
-                .message("Hemos enviado un enlace para restablecer tu contraseña");
-        
-        // Solo incluir token en desarrollo (puedes agregar una propiedad de perfil para controlar esto)
-        responseBuilder.token(token);
-        
-        return ResponseEntity.ok(responseBuilder.build());
+        return ResponseEntity.ok(AuthResponse.builder()
+                .message("Hemos enviado un enlace para restablecer tu contraseña a tu correo electrónico")
+                .build());
     }
 
     @PostMapping("/reset-password")
