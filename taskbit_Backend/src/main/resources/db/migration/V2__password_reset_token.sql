@@ -11,3 +11,4 @@ CREATE INDEX idx_password_reset_token_token ON password_reset_token(token);
 CREATE INDEX idx_password_reset_token_user_id ON password_reset_token(user_id);
 CREATE INDEX idx_password_reset_token_expires_at ON password_reset_token(expires_at);
 
+

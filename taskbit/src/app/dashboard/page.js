@@ -43,12 +43,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // Verificar autenticación
-    if (!AuthService.isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
-
+    // El AuthGuard ya maneja la verificación de autenticación
+    // Aquí solo cargamos los datos si el usuario está autenticado
     const loadUserData = async () => {
       try {
         const userData = AuthService.getUser();
@@ -62,7 +58,7 @@ export default function DashboardPage() {
     };
 
     loadUserData();
-  }, [router]);
+  }, []);
 
   const handleLogout = () => {
     logout();

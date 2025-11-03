@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthService from "@/services/auth.service";
+import { useAuth } from "@/context/auth.context";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const router = useRouter();
+  const { refreshAuth } = useAuth();
 
   // Cargar email recordado al iniciar
   useEffect(() => {
@@ -80,12 +82,16 @@ export default function LoginPage() {
         // Almacenar token y datos del usuario con "Recordarme"
         AuthService.login(data.token, data.userId, rememberMe, email.trim());
         
+        // Actualizar el contexto de autenticación inmediatamente
+        refreshAuth();
+        
         // Mostrar mensaje de bienvenida brevemente
         setShowWelcome(true);
         
         // Redireccionar al dashboard después de 1.5 segundos
+        // Usar window.location.href para forzar recarga completa y asegurar que el contexto se inicialice
         setTimeout(() => {
-          router.push("/dashboard");
+          window.location.href = "/dashboard";
         }, 1500);
       }
     } catch (err) {
