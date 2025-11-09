@@ -53,25 +53,34 @@ public class AlertService {
             throw new BusinessException("No se puede crear alerta para tarea vencida");
         }
 
-        // Validar que no exista una alerta duplicada
-        Optional<Alert> existingAlert = alertRepository.findByTaskIdAndTimeBefore(request.getTaskId(), request.getTimeBefore());
+        // Normalizar timeBefore (trim y validar)
+        String normalizedTimeBefore = request.getTimeBefore() != null ? request.getTimeBefore().trim() : null;
+        if (normalizedTimeBefore == null || normalizedTimeBefore.isEmpty()) {
+            throw new BusinessException("El tiempo de aviso no puede estar vacío");
+        }
+
+        // Validar que no exista una alerta duplicada (usando el valor normalizado)
+        Optional<Alert> existingAlert = alertRepository.findByTaskIdAndTimeBefore(request.getTaskId(), normalizedTimeBefore);
         if (existingAlert.isPresent()) {
             throw new BusinessException("Ya existe una alerta con este tiempo de aviso para esta tarea");
         }
 
         // Calcular scheduledFor basado en timeBefore y dueDate
-        OffsetDateTime scheduledFor = calculateScheduledFor(task.getDueDate(), request.getTimeBefore());
+        OffsetDateTime scheduledFor = calculateScheduledFor(task.getDueDate(), normalizedTimeBefore);
 
         // Crear nueva alerta
         Alert alert = Alert.builder()
                 .task(task)
-                .timeBefore(request.getTimeBefore().trim())
+                .timeBefore(normalizedTimeBefore)
                 .scheduledFor(scheduledFor)
                 .status("activa")
                 .createdAt(OffsetDateTime.now())
                 .build();
 
         Alert savedAlert = alertRepository.save(alert);
+        
+        // Forzar el flush para asegurar que se persista inmediatamente
+        alertRepository.flush();
 
         return mapToResponse(savedAlert);
     }
@@ -177,10 +186,15 @@ public class AlertService {
     }
 
     private AlertResponse mapToResponse(Alert alert) {
+        // Asegurar que la relación Task esté cargada para evitar LazyInitializationException
+        Task task = alert.getTask();
+        Long taskId = task != null ? task.getId() : null;
+        String taskTitle = task != null ? task.getTitle() : null;
+        
         return AlertResponse.builder()
                 .id(alert.getId())
-                .taskId(alert.getTask().getId())
-                .taskTitle(alert.getTask().getTitle())
+                .taskId(taskId)
+                .taskTitle(taskTitle)
                 .timeBefore(alert.getTimeBefore())
                 .scheduledFor(alert.getScheduledFor())
                 .status(alert.getStatus())
