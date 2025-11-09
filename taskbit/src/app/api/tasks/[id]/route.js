@@ -88,6 +88,11 @@ export async function PUT(req, { params }) {
           { errors: { priority: "Prioridad no válida" } },
           { status: 400 }
         );
+      } else if (errorMessage.includes("Estado no válido")) {
+        return NextResponse.json(
+          { errors: { status: "Estado no válido" } },
+          { status: 400 }
+        );
       }
 
       return NextResponse.json(
@@ -106,4 +111,43 @@ export async function PUT(req, { params }) {
   }
 }
 
+export async function DELETE(req, { params }) {
+  try {
+    // Obtener el token del header Authorization
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: "No autorizado" },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      return NextResponse.json(
+        { error: data.message || "Error al eliminar la tarea" },
+        { status: response.status }
+      );
+    }
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("Error en DELETE /api/tasks/[id]:", error);
+    return NextResponse.json(
+      { error: "Error en el servidor" },
+      { status: 500 }
+    );
+  }
+}
 

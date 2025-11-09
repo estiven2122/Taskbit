@@ -1,6 +1,8 @@
 package com.taskbit.backend.task;
 
+import com.taskbit.backend.alert.AlertRepository;
 import com.taskbit.backend.exception.AuthenticationException;
+import com.taskbit.backend.exception.BusinessException;
 import com.taskbit.backend.task.dto.CreateTaskRequest;
 import com.taskbit.backend.task.dto.TaskResponse;
 import com.taskbit.backend.task.dto.UpdateTaskRequest;
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final AppUserRepository userRepository;
+    private final AlertRepository alertRepository;
 
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request, String userEmail) {
@@ -129,15 +132,19 @@ public class TaskService {
         String status = task.getStatus(); // Mantener el estado actual por defecto
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             String statusValue = request.getStatus().trim();
-            // Normalizar: capitalizar primera letra de cada palabra
+            // Validar que el estado sea uno de los válidos: Pendiente, En progreso, Completada
             if (statusValue.equalsIgnoreCase("Pendiente") || 
                 statusValue.equalsIgnoreCase("En progreso") || 
                 statusValue.equalsIgnoreCase("Completada")) {
                 if (statusValue.equalsIgnoreCase("En progreso")) {
                     status = "En progreso";
+                    // Si cambia de completada a otro estado, limpiar completedAt
+                    if (task.getStatus().equals("Completada")) {
+                        task.setCompletedAt(null);
+                    }
                 } else if (statusValue.equalsIgnoreCase("Completada")) {
                     status = "Completada";
-                    // Si se marca como completada, actualizar completedAt
+                    // Si se marca como completada, actualizar completedAt con la fecha y hora exacta
                     if (task.getCompletedAt() == null) {
                         task.setCompletedAt(OffsetDateTime.now());
                     }
@@ -149,7 +156,7 @@ public class TaskService {
                     }
                 }
             } else {
-                throw new AuthenticationException("Estado no válido");
+                throw new BusinessException("Estado no válido");
             }
         }
 
@@ -159,6 +166,105 @@ public class TaskService {
         task.setDueDate(request.getDueDate());
         task.setPriority(priority);
         task.setCourse(request.getCourse() != null ? request.getCourse().trim() : null);
+        task.setStatus(status);
+        task.setUpdatedAt(OffsetDateTime.now());
+
+        Task updatedTask = taskRepository.save(task);
+
+        return mapToResponse(updatedTask);
+    }
+
+    @Transactional
+    public void deactivateTaskAlerts(Long taskId, String userEmail) {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AuthenticationException("Usuario no encontrado"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new AuthenticationException("Tarea no encontrada"));
+
+        // Verificar que la tarea pertenece al usuario
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new AuthenticationException("No tienes permiso para modificar esta tarea");
+        }
+
+        // Desactivar todas las alertas activas
+        List<com.taskbit.backend.alert.Alert> activeAlerts = alertRepository.findByTaskIdAndStatus(taskId, "activa");
+        for (com.taskbit.backend.alert.Alert alert : activeAlerts) {
+            alert.setStatus("desactivada");
+        }
+        alertRepository.saveAll(activeAlerts);
+    }
+
+    @Transactional
+    public void deleteTask(Long taskId, String userEmail) {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AuthenticationException("Usuario no encontrado"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new AuthenticationException("Tarea no encontrada"));
+
+        // Verificar que la tarea pertenece al usuario
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new AuthenticationException("No tienes permiso para eliminar esta tarea");
+        }
+
+        // Verificar si hay alertas activas
+        List<com.taskbit.backend.alert.Alert> activeAlerts = alertRepository.findByTaskIdAndStatus(taskId, "activa");
+        if (!activeAlerts.isEmpty()) {
+            throw new BusinessException("No puedes eliminar esta tarea mientras tenga alertas activas");
+        }
+
+        // Eliminar todas las alertas asociadas (activas y no activas)
+        List<com.taskbit.backend.alert.Alert> allAlerts = alertRepository.findByTaskId(taskId);
+        alertRepository.deleteAll(allAlerts);
+
+        // Eliminar la tarea
+        taskRepository.delete(task);
+    }
+
+    @Transactional
+    public TaskResponse updateTaskStatus(Long taskId, String newStatus, String userEmail) {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AuthenticationException("Usuario no encontrado"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new AuthenticationException("Tarea no encontrada"));
+
+        // Verificar que la tarea pertenece al usuario
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new AuthenticationException("No tienes permiso para modificar esta tarea");
+        }
+
+        // Validar que el estado sea uno de los válidos
+        String status;
+        if (newStatus == null || newStatus.trim().isEmpty()) {
+            throw new BusinessException("Estado no válido");
+        }
+        
+        String statusValue = newStatus.trim();
+        if (statusValue.equalsIgnoreCase("Pendiente")) {
+            status = "Pendiente";
+            // Si cambia de completada a otro estado, limpiar completedAt
+            if (task.getStatus().equals("Completada")) {
+                task.setCompletedAt(null);
+            }
+        } else if (statusValue.equalsIgnoreCase("En progreso")) {
+            status = "En progreso";
+            // Si cambia de completada a otro estado, limpiar completedAt
+            if (task.getStatus().equals("Completada")) {
+                task.setCompletedAt(null);
+            }
+        } else if (statusValue.equalsIgnoreCase("Completada")) {
+            status = "Completada";
+            // Si se marca como completada, registrar la fecha y hora exacta
+            if (task.getCompletedAt() == null) {
+                task.setCompletedAt(OffsetDateTime.now());
+            }
+        } else {
+            throw new BusinessException("Estado no válido");
+        }
+
+        // Actualizar estado y fecha de actualización
         task.setStatus(status);
         task.setUpdatedAt(OffsetDateTime.now());
 
@@ -178,6 +284,7 @@ public class TaskService {
                 .status(task.getStatus())
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
+                .completedAt(task.getCompletedAt())
                 .build();
     }
 }

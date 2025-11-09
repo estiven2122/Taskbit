@@ -22,6 +22,7 @@ public class TaskResponse {
     private String status;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private OffsetDateTime completedAt;
 }
 
 
