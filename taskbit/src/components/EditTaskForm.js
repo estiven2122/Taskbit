@@ -361,67 +361,6 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
               </div>
             </div>
 
-            {/* Sección de Alertas */}
-            <div className="pt-4 border-t border-gray-200">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-lg font-semibold text-gray-900">Alertas</h4>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateAlert(!showCreateAlert)}
-                  className="text-sm px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  {showCreateAlert ? "Cancelar" : "+ Nueva Alerta"}
-                </button>
-              </div>
-
-              {showCreateAlert && (
-                <div className="mb-4">
-                  <CreateAlertForm
-                    task={task}
-                    onAlertCreated={handleAlertCreated}
-                    onCancel={() => setShowCreateAlert(false)}
-                  />
-                </div>
-              )}
-
-              {loadingAlerts ? (
-                <p className="text-sm text-gray-500">Cargando alertas...</p>
-              ) : alerts.length === 0 ? (
-                <p className="text-sm text-gray-500">No hay alertas para esta tarea</p>
-              ) : (
-                <div className="space-y-2">
-                  {alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`p-3 rounded-md border ${
-                        alert.status === "activa"
-                          ? "bg-green-50 border-green-200"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {alert.timeBefore} antes de la fecha de entrega
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Programada para: {new Date(alert.scheduledFor).toLocaleString('es-ES')}
-                          </p>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                            alert.status === "activa"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {alert.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
@@ -441,6 +380,67 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
               </button>
             </div>
           </form>
+
+          {/* Sección de Alertas - Fuera del formulario para evitar formularios anidados */}
+          <div className="pt-4 border-t border-gray-200 mt-4">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-lg font-semibold text-gray-900">Alertas</h4>
+              <button
+                type="button"
+                onClick={() => setShowCreateAlert(!showCreateAlert)}
+                className="text-sm px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {showCreateAlert ? "Cancelar" : "+ Nueva Alerta"}
+              </button>
+            </div>
+
+            {showCreateAlert && (
+              <div className="mb-4">
+                <CreateAlertForm
+                  task={task}
+                  onAlertCreated={handleAlertCreated}
+                  onCancel={() => setShowCreateAlert(false)}
+                />
+              </div>
+            )}
+
+            {loadingAlerts ? (
+              <p className="text-sm text-gray-500">Cargando alertas...</p>
+            ) : alerts.length === 0 ? (
+              <p className="text-sm text-gray-500">No hay alertas para esta tarea</p>
+            ) : (
+              <div className="space-y-2">
+                {alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`p-3 rounded-md border ${
+                      alert.status === "activa"
+                        ? "bg-green-50 border-green-200"
+                        : "bg-gray-50 border-gray-200"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {alert.timeBefore} antes de la fecha de entrega
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Programada para: {new Date(alert.scheduledFor).toLocaleString('es-ES')}
+                        </p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                          alert.status === "activa"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}>
+                          {alert.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
