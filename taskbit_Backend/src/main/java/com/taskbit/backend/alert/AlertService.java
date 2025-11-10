@@ -29,71 +29,90 @@ public class AlertService {
 
     @Transactional
     public AlertResponse createAlert(CreateAlertRequest request, String userEmail) {
-        // Obtener usuario por email
-        AppUser user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new AuthenticationException("Usuario no encontrado"));
+        try {
+            // Obtener usuario por email
+            AppUser user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new AuthenticationException("Usuario no encontrado"));
 
-        // Validar que la tarea existe
-        Task task = taskRepository.findById(request.getTaskId())
-                .orElseThrow(() -> new AuthenticationException("Tarea no encontrada"));
+            // Validar que la tarea existe
+            Task task = taskRepository.findById(request.getTaskId())
+                    .orElseThrow(() -> new AuthenticationException("Tarea no encontrada"));
 
-        // Verificar que la tarea pertenece al usuario
-        if (!task.getUser().getId().equals(user.getId())) {
-            throw new AuthenticationException("No tienes permiso para crear alertas para esta tarea");
+            // Verificar que la tarea pertenece al usuario
+            // Asegurar que la relación User esté cargada accediendo a su ID
+            Long taskUserId = task.getUser() != null ? task.getUser().getId() : null;
+            if (taskUserId == null || !taskUserId.equals(user.getId())) {
+                throw new AuthenticationException("No tienes permiso para crear alertas para esta tarea");
+            }
+
+            // Validar que la tarea tenga fecha de entrega
+            if (task.getDueDate() == null) {
+                throw new BusinessException("La tarea debe tener una fecha de entrega para crear una alerta");
+            }
+
+            // Validar que la tarea no esté vencida (la fecha de entrega debe ser futura o igual a hoy)
+            LocalDate today = LocalDate.now();
+            if (task.getDueDate().isBefore(today)) {
+                throw new BusinessException("No se puede crear alerta para tarea vencida");
+            }
+
+            // Normalizar timeBefore (trim y validar)
+            String normalizedTimeBefore = request.getTimeBefore() != null ? request.getTimeBefore().trim() : null;
+            if (normalizedTimeBefore == null || normalizedTimeBefore.isEmpty()) {
+                throw new BusinessException("El tiempo de aviso no puede estar vacío");
+            }
+
+            // Validar que no exista una alerta duplicada (usando el valor normalizado)
+            Optional<Alert> existingAlert = alertRepository.findByTaskIdAndTimeBefore(request.getTaskId(), normalizedTimeBefore);
+            if (existingAlert.isPresent()) {
+                throw new BusinessException("Ya existe una alerta con este tiempo de aviso para esta tarea");
+            }
+
+            // Calcular scheduledFor basado en timeBefore y dueDate
+            OffsetDateTime scheduledFor = calculateScheduledFor(task.getDueDate(), normalizedTimeBefore);
+
+            // Crear nueva alerta
+            Alert alert = Alert.builder()
+                    .task(task)
+                    .timeBefore(normalizedTimeBefore)
+                    .scheduledFor(scheduledFor)
+                    .status("activa")
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+
+            Alert savedAlert = alertRepository.save(alert);
+            
+            // Forzar el flush para asegurar que se persista inmediatamente
+            alertRepository.flush();
+            
+            // Recargar la alerta con la relación Task cargada usando JOIN FETCH
+            Alert alertWithTask = alertRepository.findByIdWithTask(savedAlert.getId())
+                    .orElse(savedAlert); // Si no se encuentra, usar la alerta guardada
+            
+            // Asegurar que la relación Task esté inicializada dentro de la transacción
+            // Como ya tenemos la tarea cargada desde el inicio, simplemente la asignamos si es necesario
+            if (alertWithTask.getTask() == null && savedAlert.getTask() != null) {
+                // Si por alguna razón la relación no se cargó, usar la tarea que ya tenemos
+                alertWithTask.setTask(task);
+            }
+
+            AlertResponse response = mapToResponse(alertWithTask);
+            
+            // Verificar que la respuesta tenga todos los campos necesarios
+            if (response.getId() == null) {
+                throw new BusinessException("Error al crear la alerta: no se generó el ID");
+            }
+            
+            return response;
+        } catch (AuthenticationException | BusinessException e) {
+            // Re-lanzar excepciones de negocio
+            throw e;
+        } catch (Exception e) {
+            // Loggear cualquier otra excepción
+            System.err.println("Error inesperado al crear alerta: " + e.getMessage());
+            e.printStackTrace();
+            throw new BusinessException("Error inesperado al crear la alerta: " + e.getMessage());
         }
-
-        // Validar que la tarea tenga fecha de entrega
-        if (task.getDueDate() == null) {
-            throw new BusinessException("La tarea debe tener una fecha de entrega para crear una alerta");
-        }
-
-        // Validar que la tarea no esté vencida (la fecha de entrega debe ser futura o igual a hoy)
-        LocalDate today = LocalDate.now();
-        if (task.getDueDate().isBefore(today)) {
-            throw new BusinessException("No se puede crear alerta para tarea vencida");
-        }
-
-        // Normalizar timeBefore (trim y validar)
-        String normalizedTimeBefore = request.getTimeBefore() != null ? request.getTimeBefore().trim() : null;
-        if (normalizedTimeBefore == null || normalizedTimeBefore.isEmpty()) {
-            throw new BusinessException("El tiempo de aviso no puede estar vacío");
-        }
-
-        // Validar que no exista una alerta duplicada (usando el valor normalizado)
-        Optional<Alert> existingAlert = alertRepository.findByTaskIdAndTimeBefore(request.getTaskId(), normalizedTimeBefore);
-        if (existingAlert.isPresent()) {
-            throw new BusinessException("Ya existe una alerta con este tiempo de aviso para esta tarea");
-        }
-
-        // Calcular scheduledFor basado en timeBefore y dueDate
-        OffsetDateTime scheduledFor = calculateScheduledFor(task.getDueDate(), normalizedTimeBefore);
-
-        // Crear nueva alerta
-        Alert alert = Alert.builder()
-                .task(task)
-                .timeBefore(normalizedTimeBefore)
-                .scheduledFor(scheduledFor)
-                .status("activa")
-                .createdAt(OffsetDateTime.now())
-                .build();
-
-        Alert savedAlert = alertRepository.save(alert);
-        
-        // Forzar el flush para asegurar que se persista inmediatamente
-        alertRepository.flush();
-        
-        // Recargar la alerta con la relación Task cargada usando JOIN FETCH
-        Alert alertWithTask = alertRepository.findByIdWithTask(savedAlert.getId())
-                .orElse(savedAlert); // Si no se encuentra, usar la alerta guardada
-        
-        // Asegurar que la relación Task esté inicializada dentro de la transacción
-        // Como ya tenemos la tarea cargada desde el inicio, simplemente la asignamos si es necesario
-        if (alertWithTask.getTask() == null && savedAlert.getTask() != null) {
-            // Si por alguna razón la relación no se cargó, usar la tarea que ya tenemos
-            alertWithTask.setTask(task);
-        }
-
-        return mapToResponse(alertWithTask);
     }
 
     @Transactional(readOnly = true)

@@ -25,13 +25,26 @@ public class AlertController {
     @PostMapping
     @Operation(summary = "Crear nueva alerta", description = "Crea una nueva alerta para una tarea existente")
     public ResponseEntity<AlertResponse> createAlert(@Valid @RequestBody CreateAlertRequest request, Principal principal) {
-        String userEmail = principal != null ? principal.getName() : null;
-        if (userEmail == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        try {
+            String userEmail = principal != null ? principal.getName() : null;
+            if (userEmail == null) {
+                System.err.println("AlertController: Usuario no autenticado");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
 
-        AlertResponse alert = alertService.createAlert(request, userEmail);
-        return ResponseEntity.status(HttpStatus.CREATED).body(alert);
+            System.out.println("AlertController: Creando alerta para usuario: " + userEmail + ", taskId: " + request.getTaskId() + ", timeBefore: " + request.getTimeBefore());
+            
+            AlertResponse alert = alertService.createAlert(request, userEmail);
+            
+            System.out.println("AlertController: Alerta creada exitosamente con ID: " + alert.getId());
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(alert);
+        } catch (Exception e) {
+            System.err.println("AlertController: Error al crear alerta: " + e.getMessage());
+            e.printStackTrace();
+            // Las excepciones serán manejadas por GlobalExceptionHandler
+            throw e;
+        }
     }
 
     @GetMapping
