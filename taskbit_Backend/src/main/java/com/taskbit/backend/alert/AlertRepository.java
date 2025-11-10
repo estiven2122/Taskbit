@@ -17,5 +17,9 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     @Query("SELECT a FROM Alert a WHERE a.task.id = :taskId AND a.timeBefore = :timeBefore")
     Optional<Alert> findByTaskIdAndTimeBefore(@Param("taskId") Long taskId, @Param("timeBefore") String timeBefore);
     
+    // Query para cargar la alerta con la relación Task usando JOIN FETCH
+    @Query("SELECT a FROM Alert a JOIN FETCH a.task WHERE a.id = :id")
+    Optional<Alert> findByIdWithTask(@Param("id") Long id);
+    
     List<Alert> findByStatus(String status);
 }

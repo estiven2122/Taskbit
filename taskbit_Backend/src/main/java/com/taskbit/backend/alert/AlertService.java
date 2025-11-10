@@ -81,8 +81,19 @@ public class AlertService {
         
         // Forzar el flush para asegurar que se persista inmediatamente
         alertRepository.flush();
+        
+        // Recargar la alerta con la relación Task cargada usando JOIN FETCH
+        Alert alertWithTask = alertRepository.findByIdWithTask(savedAlert.getId())
+                .orElse(savedAlert); // Si no se encuentra, usar la alerta guardada
+        
+        // Asegurar que la relación Task esté inicializada dentro de la transacción
+        // Como ya tenemos la tarea cargada desde el inicio, simplemente la asignamos si es necesario
+        if (alertWithTask.getTask() == null && savedAlert.getTask() != null) {
+            // Si por alguna razón la relación no se cargó, usar la tarea que ya tenemos
+            alertWithTask.setTask(task);
+        }
 
-        return mapToResponse(savedAlert);
+        return mapToResponse(alertWithTask);
     }
 
     @Transactional(readOnly = true)

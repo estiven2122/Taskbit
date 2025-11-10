@@ -84,23 +84,54 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
 
     try {
       const token = AuthService.getToken();
+      if (!token) {
+        setErrors({ form: "No estás autenticado. Por favor, inicia sesión." });
+        setIsLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        taskId: parseInt(formData.taskId),
+        timeBefore: formData.timeBefore,
+      };
+
+      // Crear un AbortController para timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+
       const response = await fetch("/api/alerts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          taskId: parseInt(formData.taskId),
-          timeBefore: formData.timeBefore,
-        }),
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
 
-      const data = await response.json();
+      clearTimeout(timeoutId);
+
+      // Verificar si la respuesta tiene contenido antes de parsear JSON
+      const contentType = response.headers.get("content-type");
+      let data;
+      
+      if (contentType && contentType.includes("application/json")) {
+        const text = await response.text();
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (parseError) {
+          console.error("Error parseando JSON:", parseError);
+          setErrors({ form: "Error en la respuesta del servidor. Intente nuevamente." });
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        data = {};
+      }
 
       if (!response.ok) {
         // El backend puede devolver 'message' o 'error'
-        const errorMessage = data.message || data.error || "Error al crear la alerta";
+        const errorMessage = data.message || data.error || `Error al crear la alerta (${response.status})`;
         setErrors({ form: errorMessage });
       } else {
         // Éxito
@@ -117,7 +148,7 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
           onAlertCreated(data);
         }
 
-        // Limpiar mensaje de éxito después de 3 segundos
+        // Limpiar mensaje de éxito después de 2 segundos
         setTimeout(() => {
           setSuccessMessage("");
           if (onCancel) {
@@ -126,7 +157,12 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
         }, 2000);
       }
     } catch (error) {
-      setErrors({ form: "Error de conexión. Intente nuevamente." });
+      console.error("Error al crear alerta:", error);
+      if (error.name === 'AbortError') {
+        setErrors({ form: "La petición tardó demasiado. Intente nuevamente." });
+      } else {
+        setErrors({ form: "Error de conexión. Intente nuevamente." });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -164,13 +200,7 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
               }`}
             >
               <option value="">Seleccionar tarea</option>
-              {tasks && tasks
-                .filter(t => t.dueDate && new Date(t.dueDate) >= new Date(new Date().setHours(0, 0, 0, 0)))
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title} {t.dueDate ? `(${new Date(t.dueDate).toLocaleDateString('es-ES')})` : ''}
-                  </option>
-                ))}
+              {/* Nota: Las tareas deben ser pasadas como prop 'tasks' al componente */}
             </select>
             {errors.taskId && (
               <p className="mt-1 text-sm text-red-600">{errors.taskId}</p>
