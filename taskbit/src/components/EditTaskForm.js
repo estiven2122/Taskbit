@@ -64,6 +64,12 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
     // Recargar las alertas para obtener la lista completa actualizada
     await loadTaskAlerts();
     setShowCreateAlert(false);
+    
+    // Notificar al componente padre para que también recargue las alertas activas
+    if (onTaskUpdated) {
+      // Llamar a onTaskUpdated para que el dashboard recargue las alertas
+      onTaskUpdated(task);
+    }
   };
 
   const handleChange = (e) => {
