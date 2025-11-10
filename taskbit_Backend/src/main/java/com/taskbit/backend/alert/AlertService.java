@@ -80,10 +80,22 @@ public class AlertService {
                     .createdAt(OffsetDateTime.now())
                     .build();
 
+            System.out.println("AlertService: Guardando alerta - taskId: " + task.getId() + ", timeBefore: " + normalizedTimeBefore);
+            
             Alert savedAlert = alertRepository.save(alert);
+            System.out.println("AlertService: Alerta guardada con ID: " + savedAlert.getId());
             
             // Forzar el flush para asegurar que se persista inmediatamente
             alertRepository.flush();
+            System.out.println("AlertService: Flush completado");
+            
+            // Verificar que realmente se guardó consultando la BD
+            Optional<Alert> verifyAlert = alertRepository.findById(savedAlert.getId());
+            if (verifyAlert.isEmpty()) {
+                System.err.println("AlertService: ERROR - La alerta no se encontró después de guardar!");
+                throw new BusinessException("Error al guardar la alerta en la base de datos");
+            }
+            System.out.println("AlertService: Alerta verificada en BD con ID: " + verifyAlert.get().getId());
             
             // Recargar la alerta con la relación Task cargada usando JOIN FETCH
             Alert alertWithTask = alertRepository.findByIdWithTask(savedAlert.getId())
@@ -91,18 +103,22 @@ public class AlertService {
             
             // Asegurar que la relación Task esté inicializada dentro de la transacción
             // Como ya tenemos la tarea cargada desde el inicio, simplemente la asignamos si es necesario
-            if (alertWithTask.getTask() == null && savedAlert.getTask() != null) {
+            if (alertWithTask.getTask() == null) {
                 // Si por alguna razón la relación no se cargó, usar la tarea que ya tenemos
                 alertWithTask.setTask(task);
+                System.out.println("AlertService: Asignando tarea manualmente a la alerta");
             }
 
             AlertResponse response = mapToResponse(alertWithTask);
+            System.out.println("AlertService: Respuesta mapeada - ID: " + response.getId() + ", taskId: " + response.getTaskId());
             
             // Verificar que la respuesta tenga todos los campos necesarios
             if (response.getId() == null) {
+                System.err.println("AlertService: ERROR - La respuesta no tiene ID!");
                 throw new BusinessException("Error al crear la alerta: no se generó el ID");
             }
             
+            System.out.println("AlertService: Alerta creada exitosamente con ID: " + response.getId());
             return response;
         } catch (AuthenticationException | BusinessException e) {
             // Re-lanzar excepciones de negocio

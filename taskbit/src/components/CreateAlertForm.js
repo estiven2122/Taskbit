@@ -129,12 +129,16 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
         data = {};
       }
 
+      console.log("CreateAlertForm: Respuesta recibida - Status:", response.status, "Data:", data);
+
       if (!response.ok) {
         // El backend puede devolver 'message' o 'error'
         const errorMessage = data.message || data.error || `Error al crear la alerta (${response.status})`;
+        console.error("CreateAlertForm: Error al crear alerta:", errorMessage);
         setErrors({ form: errorMessage });
       } else {
         // Éxito
+        console.log("CreateAlertForm: Alerta creada exitosamente - ID:", data.id, "TaskId:", data.taskId);
         setSuccessMessage("Alerta creada exitosamente");
         
         // Limpiar formulario
@@ -145,6 +149,7 @@ export default function CreateAlertForm({ task, onAlertCreated, onCancel }) {
 
         // Notificar al componente padre para refrescar la lista
         if (onAlertCreated) {
+          console.log("CreateAlertForm: Notificando al componente padre con alerta:", data);
           onAlertCreated(data);
         }
 

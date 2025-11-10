@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const loadAlerts = async () => {
     try {
       const token = AuthService.getToken();
+      console.log("Dashboard: Cargando alertas activas...");
       const response = await fetch("/api/alerts/active", {
         headers: {
           "Content-Type": "application/json",
@@ -60,10 +61,14 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const alertsData = await response.json();
+        console.log("Dashboard: Alertas activas cargadas:", alertsData.length, "alertas");
+        console.log("Dashboard: Detalle de alertas activas:", alertsData);
         setAlerts(alertsData);
+      } else {
+        console.error("Dashboard: Error al cargar alertas activas - Status:", response.status);
       }
     } catch (error) {
-      console.error("Error cargando alertas:", error);
+      console.error("Dashboard: Error cargando alertas:", error);
     }
   };
 
@@ -96,15 +101,20 @@ export default function DashboardPage() {
     loadAlerts();
   };
 
-  const handleTaskUpdated = (updatedTask) => {
+  const handleTaskUpdated = async (updatedTask) => {
+    console.log("Dashboard: Tarea actualizada recibida:", updatedTask);
     // Actualizar la tarea en la lista local
     setTasks(prevTasks => 
       prevTasks.map(task => 
         task.id === updatedTask.id ? updatedTask : task
       )
     );
+    // Esperar un momento antes de recargar alertas
+    await new Promise(resolve => setTimeout(resolve, 300));
     // Recargar alertas por si se crearon nuevas
-    loadAlerts();
+    console.log("Dashboard: Recargando alertas activas...");
+    await loadAlerts();
+    console.log("Dashboard: Alertas activas recargadas");
     // Cerrar el modal después de un breve delay
     setTimeout(() => {
       setSelectedTask(null);

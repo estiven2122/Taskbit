@@ -43,6 +43,7 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
     setLoadingAlerts(true);
     try {
       const token = AuthService.getToken();
+      console.log("EditTaskForm: Cargando alertas para tarea ID:", task.id);
       const response = await fetch(`/api/alerts/task/${task.id}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -51,22 +52,34 @@ export default function EditTaskForm({ task, onCancel, onTaskUpdated }) {
       
       if (response.ok) {
         const alertsData = await response.json();
+        console.log("EditTaskForm: Alertas cargadas:", alertsData.length, "alertas");
+        console.log("EditTaskForm: Detalle de alertas:", alertsData);
         setAlerts(alertsData);
+      } else {
+        console.error("EditTaskForm: Error al cargar alertas - Status:", response.status);
       }
     } catch (error) {
-      console.error("Error cargando alertas:", error);
+      console.error("EditTaskForm: Error cargando alertas:", error);
     } finally {
       setLoadingAlerts(false);
     }
   };
 
   const handleAlertCreated = async (newAlert) => {
+    console.log("EditTaskForm: Alerta creada recibida:", newAlert);
+    
+    // Esperar un momento para asegurar que la transacción se haya completado
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // Recargar las alertas para obtener la lista completa actualizada
+    console.log("EditTaskForm: Recargando alertas de la tarea...");
     await loadTaskAlerts();
+    console.log("EditTaskForm: Alertas recargadas");
     setShowCreateAlert(false);
     
     // Notificar al componente padre para que también recargue las alertas activas
     if (onTaskUpdated) {
+      console.log("EditTaskForm: Notificando al componente padre para recargar alertas activas");
       // Llamar a onTaskUpdated para que el dashboard recargue las alertas
       onTaskUpdated(task);
     }
